@@ -29,4 +29,6 @@ using pip3
 
 import Math
 
-v1 = Math.Vector(1,1,1)
+v1 = Math.Vector(0.0178119987249374,0.0322079993784427,0.0158599987626075)
+
+print(v1.magnitude())
