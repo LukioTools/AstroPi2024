@@ -6,6 +6,7 @@ class Vector:
     y = 0;
     z = 0;
 
+    #calculates magnitude of the vector
     def magnitude(self):
         return math.sqrt(self.x**2 + self.y**2 + self.z**2)
 
