@@ -78,6 +78,28 @@ import Math as m
 IGRF_FILE = r'./MagneticField/IGRF13.shc'
 igrf = iut.load_shcfile(IGRF_FILE, None)
 
+class InputData:
+    date = 2024
+    alt = 7000
+    lat = 0
+    colat = 0
+    lon = 0
+    itype = 2
+    sd = 0
+    cd = 0
+
+    def __init__(self, date, alt, lat, colat, lon, itype, sd, cd):
+        self.date = date
+        self.alt = alt
+        self. lat = lat
+        self. colat = colat
+        self.lon = lon
+        self.itype = itype
+        self.sd = sd
+        self.cd = cd
+
+
+
 class MagneticField:
 
     #can be direcly passed into getMagneticFieldVector
@@ -93,33 +115,33 @@ class MagneticField:
         alt = iut.check_float(altitude)
         sd = 0;
         cd = 0
-        return date, alt, lat, colat, lon, itype, sd, cd
+        return  InputData(date, alt, lat, colat, lon, itype, sd, cd)
 
-    def GetMagneticFieldVector(date, alt, lat, colat, lon, itype, sd, cd):
+    def GetMagneticFieldVector(input):
 
         # Interpolate the geomagnetic coefficients to the desired date(s)
         # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         f = interpolate.interp1d(igrf.time, igrf.coeffs, fill_value='extrapolate')
-        coeffs = f(date)
+        coeffs = f(input.date)
 
         # Compute the main field B_r, B_theta and B_phi value for the location(s)
-        Br, Bt, Bp = iut.synth_values(coeffs.T, alt, colat, lon,
+        Br, Bt, Bp = iut.synth_values(coeffs.T, input.alt, input.colat, input.lon,
                                       igrf.parameters['nmax'])
         # For the SV, find the 5 year period in which the date lies and compute
         # the SV within that period. IGRF has constant SV between each 5 year period
         # We don't need to subtract 1900 but it makes it clearer:
-        epoch = (date - 1900) // 5
+        epoch = (input.date - 1900) // 5
         epoch_start = epoch * 5
         # Add 1900 back on plus 1 year to account for SV in nT per year (nT/yr):
         coeffs_sv = f(1900 + epoch_start + 1) - f(1900 + epoch_start)
-        Brs, Bts, Bps = iut.synth_values(coeffs_sv.T, alt, colat, lon,
+        Brs, Bts, Bps = iut.synth_values(coeffs_sv.T, input.alt, input.colat, input.lon,
                                          igrf.parameters['nmax'])
 
         # Use the main field coefficients from the start of each five epoch
         # to compute the SV for Dec, Inc, Hor and Total Field (F)
         # [Note: these are non-linear components of X, Y and Z so treat separately]
         coeffsm = f(1900 + epoch_start);
-        Brm, Btm, Bpm = iut.synth_values(coeffsm.T, alt, colat, lon,
+        Brm, Btm, Bpm = iut.synth_values(coeffsm.T, input.alt, input.colat, input.lon,
                                          igrf.parameters['nmax'])
 
         # Rearrange to X, Y, Z components
@@ -133,17 +155,6 @@ class MagneticField:
         Xm = -Btm;
         Ym = Bpm;
         Zm = -Brm
-        # Rotate back to geodetic coords if needed
-        if (itype == 1):
-            t = X;
-            X = X * cd + Z * sd;
-            Z = Z * cd - t * sd
-            t = dX;
-            dX = dX * cd + dZ * sd;
-            dZ = dZ * cd - t * sd
-            t = Xm;
-            Xm = Xm * cd + Zm * sd;
-            Zm = Zm * cd - t * sd
 
         # Compute the four non-linear components
         dec, hoz, inc, eff = iut.xyz2dhif(X, Y, Z)

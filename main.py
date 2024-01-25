@@ -33,6 +33,8 @@ using pip3
 #print(sense.compass_raw)
 
 from MagneticField import pyIGRF
+
 mag = pyIGRF.MagneticField
-date, alt, lat, colat, lon, itype, sd, cd = mag.GetData(0,0,7000,2024)
-print(mag.GetMagneticFieldVector(date, alt, lat, colat, lon, itype, sd, cd))
+vals = mag.GetData(0,0,7000,2024)
+
+print(mag.GetMagneticFieldVector(vals))
