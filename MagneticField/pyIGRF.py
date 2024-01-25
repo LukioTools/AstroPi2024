@@ -67,11 +67,10 @@ pyIGRF: code to synthesise magnetic field values from the 13th generation of the
  -----------------------
      Initial release: April 2020 (Ciaran Beggan, BGS)
  
-    
+ !!! This code has been rewrited and edited for generic usage !!!
 """
 from scipy import interpolate
 from MagneticField import igrf_utils as iut
-#import io_options as ioo
 import Math as m
 
 # Load in the file of coefficients
