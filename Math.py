@@ -27,3 +27,6 @@ class Vector:
     #division of vector and number
     def __truediv__(self, other):
         return Vector(self.x / other, self.y / other, self.z / other)
+
+    def __str__(self):
+        return str(self.x) + " : " + str(self.y) + " : " + str(self.z)

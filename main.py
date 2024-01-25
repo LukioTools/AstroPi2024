@@ -25,4 +25,14 @@ install libraires:
 using pip3
 
 '''
+#from sense_hat import SenseHat
+#sense = SenseHat()
 
+#raw = sense.get_compass_raw()
+
+#print(sense.compass_raw)
+
+from MagneticField import pyIGRF
+mag = pyIGRF.MagneticField
+date, alt, lat, colat, lon, itype, sd, cd = mag.GetData(0,0,7000,2024)
+print(mag.GetMagneticFieldVector(date, alt, lat, colat, lon, itype, sd, cd))
