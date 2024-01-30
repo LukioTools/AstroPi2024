@@ -25,6 +25,7 @@ install libraires:
 using pip3
 
 '''
+import Math
 #from sense_hat import SenseHat
 #sense = SenseHat()
 
@@ -33,8 +34,24 @@ using pip3
 #print(sense.compass_raw)
 
 from MagneticField import pyIGRF
+import json
+
+def SaveGeomagnetic():
+    with open('data.json', 'rw') as datafile:
+        datafile.write(json_string)
+        datafile.close()
+
+def loadGeomagnetic():
+    with open('data.json', 'r') as datafile:
+        return json.loads(datafile.readlines())
 
 mag = pyIGRF.MagneticField
-vals = mag.GetData(0,0,7000,2024)
 
-print(mag.GetMagneticFieldVector(vals))
+PreCalc = []
+Done = []
+
+#for i in range(360):
+    #PreCalc.append(mag.GetMagneticFieldVector(mag.GetData(0,i,7000,2024)).unitVector().toDict())
+
+json_string = json.dumps(PreCalc, indent=4, sort_keys=True)
+

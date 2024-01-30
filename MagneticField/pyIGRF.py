@@ -28,37 +28,6 @@ pyIGRF: code to synthesise magnetic field values from the 13th generation of the
      The predictive secular-variation model is to degree and order 8 (i.e. 80
      coefficients).
 
- Inputs:
- -------
-     Inputs are via the command line:    
-     
-     Options include: 
-         Write to (1) screen or (2) filename          
-    
-    Type of computation:
-         (1) values at a single locations at one time (spot value)
-         (2) values at same location at one year intervals (time series), 
-         (3) grid of values at one time (grid); 
-     
-        Positions can be in:  
-         (1) geodetic (WGS-84)
-         (2) geocentric coordinates
-         
-     Latitude & longitude entered as: 
-         (1) decimal degrees or 
-         (2) degrees & minutes (not in grid)
-    
-     Altitude can be entered as:
-         (1) Geodetic: height above the ellipsoid in km
-         (2) Geocentric: distance from the Earth's centre in km
-        
-     Date: in decimal years (e.g. 2020.25)
- 
- Outputs: 
- -----------
-      : main field (in nanoTesla) and secular variation (in nanoTesla/year)
- 
- 
  Dependencies: 
  -------------
      : numpy, scipy
@@ -67,7 +36,8 @@ pyIGRF: code to synthesise magnetic field values from the 13th generation of the
  -----------------------
      Initial release: April 2020 (Ciaran Beggan, BGS)
  
- !!! This code has been rewrited and edited for generic usage !!!
+ !!! This code has been edited for generic usage. Also some bugs have been fixed by Me who is doing the AstroPi challenge !!!
+
 """
 from scipy import interpolate
 from MagneticField import igrf_utils as iut
