@@ -26,20 +26,23 @@ if __name__ == "__main__":
     using pip3
     
     '''
-    import Math
-    from sense_hat import SenseHat
-    sense = SenseHat()
-    import time
     
+    # all the astroPi specific libraries
+    from sense_hat import SenseHat
     from picamera.array import PiRGBArray
     from picamera import PiCamera
-    
-    from MagneticField import pyIGRF
-    import json
-    
-    import cv2
 
-    
+    # All custom libraries / files
+    from MagneticField import pyIGRF    # I am going to delete this
+    import geo                          # This is right now only for calculating distanse from cordinates
+    import Math                         # Right now this includes Vector (3d) class. Yes I like to build everyithing by myself
+
+    # python libraries this program needs for running
+    import json # Have to read json file
+    import time # have to measure time for the the 10 min limit
+    import cv2  # image analyzing (feature detecting & matching)
+
+    sense = SenseHat()
     
     def SaveGeomagnetic(PreCalc):
         with open('data.json', 'w') as datafile:
@@ -86,16 +89,13 @@ if __name__ == "__main__":
     eldata = []
     start = time.time()
 
-    while (time.time() - start < 30):
+    while (time.time() - start < 50):
     
         closestObject = {}
         closestAngle = 1000000000
         
         # for some reason i didn't get the direct read working so we are doing it this wy :)
         camera.capture(str(len(eldata))+'.jpg')
-        image = cv2.imread("image.jpg")
-        
-    
         for data in geomagneticData:
             s = data['v']
     
@@ -110,7 +110,7 @@ if __name__ == "__main__":
         # Shall we do the feature matching? I think so!
      
         # Saving data so we can prosess it afterwards
-        eldata.append({"img": str(len(eldata)) + '.jpg', "angl": closestAngle})    
+        eldata.append({"img": str(len(eldata)) + '.jpg', "angl": data['deg']})    
 
         print(time.time() - start)
         #print(str(closest) + " and the angle: " + str(geomagneticData[closestidx]))
@@ -132,58 +132,78 @@ if __name__ == "__main__":
     #this is direcly from the docs, so dont reason me :))
 
     # currenty lis is for only two photos, but we will need more as in ten minutes the space station will move a lot
-    # but currently I want it to work only with two photos
+    # but currently I want it to work only with two photos, now i make it work with many photos as there is, so we get the most accurate information
 
-    orb = cv2.ORB_create()
-    
-    kp1, des1 = orb.detectAndCompute (images[0], None)
-    kp2, des2 = orb.detectAndCompute (images[1], None)
+    TheFUllDistance = Math.Vector(0,0,0)
 
-
-    # create BFMatcher object
-    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-    # Match descriptors.
-    matches = bf.match(des1,des2)
-    # Sort them in the order of their distance.
-    matches = sorted(matches, key = lambda x:x.distance)
-
-    sumX = 0
-    # Print position changes and find the average...
-    for i, change in enumerate(matches):
-        #print(f"Position change for match {i+1}: {change}")
-        sumX += change.distance
-    
-    avg = sumX/len(position_changes)
-
-    print("avg: ")
-    print(avg)
-
-    filtered = []
-
-    for i, change in enumerate(matches):
-        if(change.distance < avg/1.4):
-            filtered.append(change)
-
-    position_changes = []
-    
-    for match in filtered:
-        # Get the keypoints for this match
-        kp1_idx = match.queryIdx
-        kp2_idx = match.trainIdx
-        kp1_pos = kp1[kp1_idx].pt
-        kp2_pos = kp2[kp2_idx].pt
+    for i in range(1, len(images)):
+        print("el i: " + str(i))
         
-        # Compute position change
-        pos_change = (kp2_pos[0] - kp1_pos[0], kp2_pos[1] - kp1_pos[1])
+        orb = cv2.ORB_create()
         
-        # Append position change to the list
-        position_changes.append(pos_change)
+        kp1, des1 = orb.detectAndCompute (images[i-1], None)
+        kp2, des2 = orb.detectAndCompute (images[i], None)
 
-    
-    
+
+        # create BFMatcher object
+        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        # Match descriptors.
+        matches = bf.match(des1,des2)
+        # Sort them in the order of their distance.
+        matches = sorted(matches, key = lambda x:x.distance)
+
+        sumD = 0
+        # Print position changes and find the average...
+        for i, change in enumerate(matches):
+            #print(f"Position change for match {i+1}: {change}")
+            sumD += abs(change.distance)
+        
+        avg = sumD/len(matches)
+
+        print("avg: ")
+        print(avg)
+
+        filtered = []
+
+        for i, change in enumerate(matches):
+            if(abs(change.distance) < avg):
+                filtered.append(change)
+
+        position_changes = []
+        
+        for match in filtered:
+            # Get the keypoints for this match
+            kp1_idx = match.queryIdx
+            kp2_idx = match.trainIdx
+            kp1_pos = kp1[kp1_idx].pt
+            kp2_pos = kp2[kp2_idx].pt
+            
+            # Compute position change
+            pos_change = (kp2_pos[0] - kp1_pos[0], kp2_pos[1] - kp1_pos[1])
+            
+            # Append position change to the list
+            position_changes.append(pos_change)
+
+        # Now we get the average of the filtered data and save it.
+
+        sumDist = Math.Vector(0,0,0)
+        for i, change in enumerate(position_changes):
+            #print(f"Position change for match {i+1}: {change}")
+            sumDist += Math.Vector(abs(change[0]), abs(change[1]), 0)
+        
+        # and then make it average as we should 
+        sumDist = sumDist/len(position_changes)
+
+        TheFUllDistance += sumDist
+
+        print("Full distance: ")
+        print(TheFUllDistance)
+
+    print("full distance")
+    print(TheFUllDistance)
     # Draw first 10 matches.
     img3 = cv2.drawMatches(images[0],kp1,images[1],kp2,filtered[:143],None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-    img3 = cv2.resize(img3, (1920, 1080))
+    img3 = cv2.resize(img3, (960, 540))
     cv2.imshow("name", img3)
     cv2.waitKey(0)
 
