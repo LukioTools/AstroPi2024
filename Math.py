@@ -2,9 +2,9 @@ import math
 
 # Custom 3d vector class
 class Vector:
-    x = 0;
-    y = 0;
-    z = 0;
+    x = 0
+    y = 0
+    z = 0
 
     # converts itself into dictionary
     def toDict(self):
@@ -16,6 +16,12 @@ class Vector:
 
     def unitVector(self):
         return self/self.magnitude()
+
+    def Angle(self, other):
+        return math.acos(self.Dot(other)/(self.magnitude()*other.magnitude()))
+
+    def Dot(self, other):
+        return self.x*other.x + self.y*other.y + self.z*other.z
 
     def __init__(self, x, y, z):
         self.x = x
