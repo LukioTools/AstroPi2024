@@ -33,7 +33,7 @@ if __name__ == "__main__":
     from picamera import PiCamera
 
     # All custom libraries / files
-    from MagneticField import pyIGRF    # I am going to delete this
+    from MagneticField import pyIGRF    # I am going to delete this, This is by the way based on the International Geomagnetic Reference Field (IGRF). Dont ask me how it works :)))  
     import geo                          # This is right now only for calculating distanse from cordinates
     import Math                         # Right now this includes Vector (3d) class. Yes I like to build everyithing by myself
 
@@ -41,19 +41,44 @@ if __name__ == "__main__":
     import json # Have to read json file
     import time # have to measure time for the the 10 min limit
     import cv2  # image analyzing (feature detecting & matching)
-
+    import os
     sense = SenseHat()
     
+    # saving json (not in use)
     def SaveGeomagnetic(PreCalc):
         with open('data.json', 'w') as datafile:
             json_string = json.dumps(PreCalc, indent=4, sort_keys=True)
             datafile.write(json_string)
             datafile.close()
     
+    # loading json
     def loadGeomagnetic():
         with open('data.json', 'r') as datafile:
             return json.loads(datafile.read())
     
+    def FindBestLatidude():
+        closestObject = {}
+        closestAngle = 1000000000
+
+        compasRaw = sense.get_compass_raw()
+        
+        # for some reason i didn't get the direct read to cv2 object working so we are doing it this wy :)
+        camera.capture(str(len(eldata))+'.jpg')
+        for data in geomagneticData:
+            s = data['v']
+    
+            v = Math.Vector(float(s['x']), float(s['y']), float(s['z']))
+    
+            angl = (v.Angle(Math.Vector(compasRaw['x'], compasRaw['y'], -compasRaw['z']))*180)/3.14
+    
+            if(angl < closestAngle):
+                closestAngle = angl
+                closestObject = data
+    
+        # Shall we do the feature matching? I think so!
+     
+        # Saving data so we can prosess it afterwards
+        return {"img": str(len(eldata)) + '.jpg', "lat": data['deg']}
     
     '''
     
@@ -73,49 +98,33 @@ if __name__ == "__main__":
     
     #SaveGeomagnetic(PreCalc)
     '''
+
+    # This is for measuring the speed
+    TheStartTimer = time.time() * 1000
     
     #lets load the geomagnetic data
     geomagneticData = loadGeomagnetic()
     
+    #initialize the picamera and set resolution
     camera = PiCamera()
     camera.resolution = (2592, 1944)
     
-    
-    compasRaw = sense.get_compass_raw()
-
-    
-    # the main loop: This is looping for ten minutes (hopefully)
-    
+    # this is the image name and the latidue of the position
     eldata = []
-    start = time.time()
 
-    while (time.time() - start < 50):
-    
-        closestObject = {}
-        closestAngle = 1000000000
-        
-        # for some reason i didn't get the direct read working so we are doing it this wy :)
-        camera.capture(str(len(eldata))+'.jpg')
-        for data in geomagneticData:
-            s = data['v']
-    
-            v = Math.Vector(float(s['x']), float(s['y']), float(s['z']))
-    
-            angl = (v.Angle(Math.Vector(compasRaw['x'], compasRaw['y'], -compasRaw['z']))*180)/3.14
-    
-            if(angl < closestAngle):
-                closestAngle = angl
-                closestObject = data
-    
-        # Shall we do the feature matching? I think so!
-     
-        # Saving data so we can prosess it afterwards
-        eldata.append({"img": str(len(eldata)) + '.jpg', "angl": data['deg']})    
+    # for measuring time
+    startTime = time.time()
+    UsedTime = 0
 
+    # the main loop: This is looping for ten minutes (hopefully)
+    while (time.time() - startTime < 50):
+        eldata.append(FindBestLatidude()) # this basicly does everything. Made it funktion so its easier to read. Even trough its kinda stupid
         print(time.time() - start)
-        #print(str(closest) + " and the angle: " + str(geomagneticData[closestidx]))
 
-    # shall we analyzee the images? I think so...
+    # Get how many seconds we spent there
+    UsedTime = TheStartTimer - time.time() * 1000
+
+    # shall we analyze the images? I think so...
 
     images = []
 
@@ -124,20 +133,14 @@ if __name__ == "__main__":
     # Lets hope we have enough ram xd
 
     for i in range(0, len(eldata)):
-        print(eldata[i]["img"])
         images.append(cv2.imread(str(eldata[i]["img"])))
 
 
     # So, we should do el image analyzing.
-    #this is direcly from the docs, so dont reason me :))
-
-    # currenty lis is for only two photos, but we will need more as in ten minutes the space station will move a lot
-    # but currently I want it to work only with two photos, now i make it work with many photos as there is, so we get the most accurate information
 
     TheFUllDistance = Math.Vector(0,0,0)
 
     for i in range(1, len(images)):
-        print("el i: " + str(i))
         
         orb = cv2.ORB_create()
         
@@ -146,6 +149,8 @@ if __name__ == "__main__":
 
 
         # create BFMatcher object
+        # atleast when it came to me, it wasn't abble to find bf for me. 
+        # Reason might be that i'm boy and I like girls, or it might be bug in the system
         bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
         # Match descriptors.
         matches = bf.match(des1,des2)
@@ -159,9 +164,6 @@ if __name__ == "__main__":
             sumD += abs(change.distance)
         
         avg = sumD/len(matches)
-
-        print("avg: ")
-        print(avg)
 
         filtered = []
 
@@ -196,14 +198,28 @@ if __name__ == "__main__":
 
         TheFUllDistance += sumDist
 
-        print("Full distance: ")
-        print(TheFUllDistance)
+    # The cordinates...
+    RealDistanceY = geo.distance(eldata[0]['lat'], 0, eldata[-1]['lat'], 0)
+    RealDistanceX = (RealDistanceY*TheFUllDistance.x)/TheFUllDistance.y
 
-    print("full distance")
-    print(TheFUllDistance)
-    # Draw first 10 matches.
-    img3 = cv2.drawMatches(images[0],kp1,images[1],kp2,filtered[:143],None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-    img3 = cv2.resize(img3, (960, 540))
-    cv2.imshow("name", img3)
-    cv2.waitKey(0)
+    RealDistance = Math.Vector(RealDistanceX, RealDistanceY)
+
+    # get the traveled distance
+    MagnitudeOfDistance = RealDistance.magnitude()
+
+    # the unit is m/s
+    TheVelocity = MagnitudeOfDistance/UsedTime
+
+    #lets save the data
+    with open("result.txt", "w") as file:
+        # Write numbers from 1 to 10, each on a new line
+        file.write(str(TheVelocity))
+
+    # and finaly lets delete all images, so we are on the safe side...
+    for i in images:
+        print(xd)
+        os.remove(images["img"])
+
+    
+
 
